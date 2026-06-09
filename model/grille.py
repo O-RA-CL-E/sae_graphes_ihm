@@ -49,4 +49,54 @@ class Grille:
                 return motif
         return None
 
-    # ----------------------------------------
+    # ------------------------------------------------------------------ #
+    #  Validation                                                          #
+    # ------------------------------------------------------------------ #
+
+    def est_valide_case(self, x: int, y: int) -> bool:
+        """
+        Vérifie la contrainte de voisinage pour une case donnée.
+        Une case ne doit pas avoir la même valeur qu'un de ses 8 voisins.
+        """
+        case = self.get_case(x, y)
+        if not case or case.est_vide():
+            return True
+        return all(v.valeur != case.valeur for v in self.get_voisins(x, y))
+
+    def est_valide(self) -> bool:
+        """Vérifie la contrainte de voisinage sur toutes les cases remplies."""
+        return all(
+            self.est_valide_case(c.x, c.y)
+            for c in self.cases.values()
+            if not c.est_vide()
+        )
+
+    def est_complete(self) -> bool:
+        """Retourne True si toutes les cases sont remplies."""
+        return all(not c.est_vide() for c in self.cases.values())
+
+    def est_gagnee(self) -> bool:
+        """
+        Vérifie les trois conditions de victoire :
+        - toutes les cases sont remplies
+        - contrainte de voisinage respectée partout
+        - tous les motifs sont complets (contiennent 1..N)
+        """
+        return (
+            self.est_complete()
+            and self.est_valide()
+            and all(m.est_complet() for m in self.motifs.values())
+        )
+
+    # ------------------------------------------------------------------ #
+    #  Réinitialisation                                                    #
+    # ------------------------------------------------------------------ #
+
+    def reinitialiser(self) -> None:
+        """Efface les valeurs non fixes (remet le joueur à l'état initial)."""
+        for case in self.cases.values():
+            if not case.fixe:
+                case.valeur = 0
+
+    def __repr__(self) -> str:
+        return f"Grille({self.largeur}x{self.hauteur}, {len(self.motifs)} motifs)"
