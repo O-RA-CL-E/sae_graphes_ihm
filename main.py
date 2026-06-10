@@ -1,26 +1,41 @@
 """
 main.py — Point d'entrée de l'application Néonaure.
 
-Lance l'interface avec le stub contrôleur pendant le développement.
-Remplacer ControllerStub par GameController (Yanis) pour la version finale.
+Usage :
+    python main.py
+
+Structure attendue du projet :
+    main.py
+    model/
+        case.py
+        motif.py
+        grille.py
+    view/
+        main_window.py
+        grid_widget.py
+    controller/
+        game_controller.py
+        grille_io.py
+    solver/
+        solveur.py
+    grilles/
+        *.json
 """
 
 import sys
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QIcon
 
 from view.main_window import MainWindow
-from controller.controller_stub import ControllerStub
+from controller.game_controller import GameController
 
 
-def main():
+def main() -> None:
     app = QApplication(sys.argv)
     app.setApplicationName("Néonaure")
+    app.setApplicationVersion("1.0")
 
-    # TODO : remplacer par GameController quand Yanis aura terminé
-    # from controller.game_controller import GameController
-    # controller = GameController()
-    controller = ControllerStub()
-
+    controller = GameController()
     window = MainWindow(controller)
     window.show()
 
