@@ -1,88 +1,79 @@
 """
-grid_widget.py — Composant graphique de la grille Néonaure.
+grid_widget.py — Composant graphique de la grille Néonaure (version pro).
 
-Responsabilités :
-  - Afficher la grille (cases, chiffres, bordures de motifs)
-  - Gérer la sélection de case (clic souris)
-  - Gérer la saisie utilisateur (clavier)
-  - Émettre le signal cell_value_changed vers le contrôleur
-
-Ce widget ne touche JAMAIS aux données métier.
-Toute saisie transite par le signal cell_value_changed.
+Améliorations visuelles :
+  - Survol des cases (hover)
+  - Mise en évidence du motif de la case sélectionnée
+  - Sélection avec fond arrondi
+  - Palette chaleureuse et moderne
+  - Texte avec anti-aliasing
 """
 
 from PyQt5.QtWidgets import QWidget, QSizePolicy
-from PyQt5.QtCore import Qt, QRect, QSize, pyqtSignal
-from PyQt5.QtGui import QPainter, QColor, QFont, QPen
+from PyQt5.QtCore import Qt, QRect, QRectF, QSize, pyqtSignal
+from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QPainterPath
 
 
-# ── Constantes visuelles ─────────────────────────────────────────────
-CELL_SIZE     = 60          # taille d'une case en pixels
-BORDER_THIN   = 1           # épaisseur bordure intra-motif
-BORDER_THICK  = 3           # épaisseur bordure inter-motif
+# ── Constantes visuelles ──────────────────────────────────────────────
+CELL_SIZE     = 60
+BORDER_THIN   = 1
+BORDER_THICK  = 3
+CORNER_RADIUS = 5
 
-# Couleurs
-C_BG_VIDE     = QColor(255, 255, 255)   # case vide, saisissable
-C_BG_FIXE     = QColor(210, 210, 210)   # case pré-remplie (non modifiable)
-C_BG_SELECT   = QColor(173, 216, 230)   # case sélectionnée (bleu clair)
-C_BG_ERREUR   = QColor(255, 200, 200)   # case en erreur (rouge clair)
-C_TEXTE_FIXE  = QColor(50,  50,  50)    # chiffre pré-rempli (gris foncé)
-C_TEXTE_JOUEUR= QColor(0,   80,  180)   # chiffre saisi par le joueur (bleu)
-C_TEXTE_ERREUR= QColor(180,  0,    0)   # chiffre en erreur (rouge)
-C_BORDURE     = QColor(0,    0,    0)   # noir pour les bordures
-# ─────────────────────────────────────────────────────────────────────
+# ── Palette ───────────────────────────────────────────────────────────
+C_BG_VIDE    = QColor(252, 251, 248)   # blanc cassé
+C_BG_FIXE    = QColor(224, 220, 213)   # beige gris — case fixe
+C_BG_SELECT  = QColor(74,  127, 191)   # bleu acier — sélection
+C_BG_HOVER   = QColor(232, 242, 255)   # bleu très pâle — survol
+C_BG_MOTIF   = QColor(236, 245, 255)   # bleu pâle — même motif que sélection
+C_BG_ERREUR  = QColor(253, 234, 232)   # rose pâle — erreur
+
+C_TXT_FIXE   = QColor(38,  38,  38)    # quasi-noir — chiffre fixe
+C_TXT_JOUEUR = QColor(26,  80,  140)   # bleu foncé — saisie joueur
+C_TXT_SELECT = QColor(255, 255, 255)   # blanc — texte sur sélection
+C_TXT_ERREUR = QColor(183,  28,  28)   # rouge foncé — erreur
+
+C_BRD_FINE   = QColor(200, 194, 186)   # gris chaud — intra-motif
+C_BRD_EPAIS  = QColor(38,  38,  38)    # quasi-noir — inter-motif / externe
 
 
 class GridWidget(QWidget):
     """
     Widget de rendu de la grille Néonaure.
 
-    Interface attendue de grid_data (fourni par le contrôleur) :
+    Signal émis lors d'une saisie utilisateur :
+        cell_value_changed(col: int, row: int, value: int)
+        value = 0 → effacement
+
+    Données attendues via update_grid(grid_data) :
     {
-        "cols"  : int,
-        "rows"  : int,
-        "cells" : [
-            {
-                "col"      : int,
-                "row"      : int,
-                "value"    : int,    # 0 = vide
-                "motif_id" : str,    # ex. "motif1"
-                "is_fixed" : bool,   # True → case de départ, non modifiable
-                "is_error" : bool    # True → contrainte violée
-            },
-            ...
+        "cols": int, "rows": int,
+        "cells": [
+            {"col", "row", "value", "motif_id", "is_fixed", "is_error"}
         ]
     }
-
-    Signal émis :
-        cell_value_changed(col: int, row: int, value: int)
-            value = 0 signifie effacement de la case
     """
 
     cell_value_changed = pyqtSignal(int, int, int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._grid_data  = None   # dict complet reçu du contrôleur
-        self._cell_map   = {}     # (col, row) → dict cellule
-        self._selected   = None   # (col, row) sélectionnée ou None
-        self._cols       = 0
-        self._rows       = 0
+        self._grid_data = None
+        self._cell_map  = {}
+        self._selected  = None
+        self._hovered   = None
+        self._cols      = 0
+        self._rows      = 0
 
         self.setFocusPolicy(Qt.StrongFocus)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setMouseTracking(True)
 
-    # ──────────────────────────────────────────────────────────────────
-    # Interface publique (appelée par MainWindow)
-    # ──────────────────────────────────────────────────────────────────
+    # ── Interface publique ────────────────────────────────────────────
 
     def update_grid(self, grid_data: dict):
-        """
-        Rafraîchit l'affichage à partir des nouvelles données du contrôleur.
-        Préserve la sélection courante si la case existe encore.
-        """
-        previous_selected = self._selected
-
+        """Rafraîchit l'affichage. Préserve la sélection si la case existe encore."""
+        prev = self._selected
         self._grid_data = grid_data
         self._cols      = grid_data.get("cols", 0)
         self._rows      = grid_data.get("rows", 0)
@@ -90,159 +81,155 @@ class GridWidget(QWidget):
             (c["col"], c["row"]): c
             for c in grid_data.get("cells", [])
         }
-
-        # Conserver la sélection si la case existe toujours
-        if previous_selected and previous_selected in self._cell_map:
-            self._selected = previous_selected
-        else:
-            self._selected = None
-
+        self._selected = prev if (prev and prev in self._cell_map) else None
         self.updateGeometry()
-        self.update()   # déclenche paintEvent
+        self.update()
 
     def clear(self):
-        """Réinitialise le widget (aucune grille chargée)."""
         self._grid_data = None
         self._cell_map  = {}
         self._selected  = None
-        self._cols      = 0
-        self._rows      = 0
+        self._hovered   = None
+        self._cols = self._rows = 0
         self.update()
 
-    # ──────────────────────────────────────────────────────────────────
-    # Taille préférée (utilisée par QScrollArea / layout)
-    # ──────────────────────────────────────────────────────────────────
-
     def sizeHint(self) -> QSize:
-        if self._cols == 0 or self._rows == 0:
-            return QSize(300, 300)
-        # +2 pour inclure la bordure externe (1px de chaque côté)
+        if self._cols == 0:
+            return QSize(400, 400)
         return QSize(self._cols * CELL_SIZE + 2,
                      self._rows * CELL_SIZE + 2)
 
-    # ──────────────────────────────────────────────────────────────────
-    # Rendu (QPainter)
-    # ──────────────────────────────────────────────────────────────────
+    # ── Rendu ─────────────────────────────────────────────────────────
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing, False)
 
         if self._grid_data is None:
-            painter.fillRect(self.rect(), QColor(240, 240, 240))
-            painter.setPen(QColor(120, 120, 120))
-            painter.drawText(self.rect(), Qt.AlignCenter, "Aucune grille chargée")
+            painter.fillRect(self.rect(), QColor(245, 243, 240))
+            painter.setPen(QColor(160, 155, 148))
+            painter.setFont(QFont("Segoe UI", 12))
+            painter.drawText(self.rect(), Qt.AlignCenter,
+                             "Charger une grille\npour commencer")
             return
 
-        self._draw_backgrounds(painter)
+        # Motif de la case sélectionnée (pour la surbrillance motif)
+        selected_motif = None
+        if self._selected:
+            sc = self._cell_map.get(self._selected)
+            if sc:
+                selected_motif = sc["motif_id"]
+
+        self._draw_backgrounds(painter, selected_motif)
         self._draw_numbers(painter)
         self._draw_borders(painter)
 
-    def _draw_backgrounds(self, painter: QPainter):
-        """Dessine le fond coloré de chaque case."""
+    def _draw_backgrounds(self, painter: QPainter, selected_motif):
+        painter.setRenderHint(QPainter.Antialiasing, True)
+
         for (col, row), cell in self._cell_map.items():
             rect = self._cell_rect(col, row)
+            pos  = (col, row)
 
-            if (col, row) == self._selected:
-                color = C_BG_SELECT
+            if pos == self._selected:
+                # Fond neutre, puis overlay arrondi bleu
+                base = C_BG_FIXE if cell["is_fixed"] else C_BG_VIDE
+                painter.fillRect(rect, base)
+                path = QPainterPath()
+                path.addRoundedRect(QRectF(rect).adjusted(3, 3, -3, -3),
+                                    CORNER_RADIUS, CORNER_RADIUS)
+                painter.fillPath(path, C_BG_SELECT)
             elif cell["is_error"]:
-                color = C_BG_ERREUR
+                painter.fillRect(rect, C_BG_ERREUR)
+            elif pos == self._hovered and not cell["is_fixed"]:
+                painter.fillRect(rect, C_BG_HOVER)
+            elif selected_motif and cell["motif_id"] == selected_motif:
+                painter.fillRect(rect, C_BG_MOTIF)
             elif cell["is_fixed"]:
-                color = C_BG_FIXE
+                painter.fillRect(rect, C_BG_FIXE)
             else:
-                color = C_BG_VIDE
+                painter.fillRect(rect, C_BG_VIDE)
 
-            painter.fillRect(rect, color)
+        painter.setRenderHint(QPainter.Antialiasing, False)
 
     def _draw_numbers(self, painter: QPainter):
-        """Affiche les chiffres dans les cases."""
-        font = QFont("Arial", CELL_SIZE // 3, QFont.Bold)
-        painter.setFont(font)
+        painter.setRenderHint(QPainter.TextAntialiasing, True)
+        font_bold   = QFont("Segoe UI", CELL_SIZE // 3, QFont.Bold)
+        font_normal = QFont("Segoe UI", CELL_SIZE // 3, QFont.Normal)
 
         for (col, row), cell in self._cell_map.items():
             if cell["value"] == 0:
                 continue
-
             rect = self._cell_rect(col, row)
+            pos  = (col, row)
 
-            if cell["is_error"]:
-                painter.setPen(C_TEXTE_ERREUR)
+            if pos == self._selected:
+                painter.setPen(C_TXT_SELECT)
+                painter.setFont(font_bold if cell["is_fixed"] else font_normal)
+            elif cell["is_error"]:
+                painter.setPen(C_TXT_ERREUR)
+                painter.setFont(font_normal)
             elif cell["is_fixed"]:
-                painter.setPen(C_TEXTE_FIXE)
+                painter.setPen(C_TXT_FIXE)
+                painter.setFont(font_bold)
             else:
-                painter.setPen(C_TEXTE_JOUEUR)
+                painter.setPen(C_TXT_JOUEUR)
+                painter.setFont(font_normal)
 
             painter.drawText(rect, Qt.AlignCenter, str(cell["value"]))
 
     def _draw_borders(self, painter: QPainter):
-        """
-        Trace les bordures :
-          - Épaisse  : séparation entre deux motifs différents
-          - Fine     : séparation entre deux cases du même motif
-          - Épaisse  : bordure externe de la grille
-        """
-        # Bordure externe
-        pen = QPen(C_BORDURE, BORDER_THICK)
-        painter.setPen(pen)
+        painter.setRenderHint(QPainter.Antialiasing, False)
+
+        # Bordure externe épaisse
+        painter.setPen(QPen(C_BRD_EPAIS, BORDER_THICK))
         painter.drawRect(1, 1,
                          self._cols * CELL_SIZE,
                          self._rows * CELL_SIZE)
 
-        # Bordures internes
         for col in range(self._cols):
             for row in range(self._rows):
                 cell = self._cell_map.get((col, row))
                 if cell is None:
                     continue
-
                 x = 1 + col * CELL_SIZE
                 y = 1 + row * CELL_SIZE
 
-                # Bord droit : entre (col, row) et (col+1, row)
+                # Bord droit
                 if col + 1 < self._cols:
-                    voisin = self._cell_map.get((col + 1, row))
-                    if voisin:
-                        inter_motif = cell["motif_id"] != voisin["motif_id"]
-                        epaisseur   = BORDER_THICK if inter_motif else BORDER_THIN
-                        painter.setPen(QPen(C_BORDURE, epaisseur))
+                    v = self._cell_map.get((col + 1, row))
+                    if v:
+                        diff = cell["motif_id"] != v["motif_id"]
+                        painter.setPen(QPen(C_BRD_EPAIS if diff else C_BRD_FINE,
+                                            BORDER_THICK if diff else BORDER_THIN))
                         painter.drawLine(x + CELL_SIZE, y,
                                          x + CELL_SIZE, y + CELL_SIZE)
-
-                # Bord bas : entre (col, row) et (col, row+1)
+                # Bord bas
                 if row + 1 < self._rows:
-                    voisin = self._cell_map.get((col, row + 1))
-                    if voisin:
-                        inter_motif = cell["motif_id"] != voisin["motif_id"]
-                        epaisseur   = BORDER_THICK if inter_motif else BORDER_THIN
-                        painter.setPen(QPen(C_BORDURE, epaisseur))
-                        painter.drawLine(x,                y + CELL_SIZE,
-                                         x + CELL_SIZE,   y + CELL_SIZE)
+                    v = self._cell_map.get((col, row + 1))
+                    if v:
+                        diff = cell["motif_id"] != v["motif_id"]
+                        painter.setPen(QPen(C_BRD_EPAIS if diff else C_BRD_FINE,
+                                            BORDER_THICK if diff else BORDER_THIN))
+                        painter.drawLine(x,             y + CELL_SIZE,
+                                         x + CELL_SIZE, y + CELL_SIZE)
 
-    # ──────────────────────────────────────────────────────────────────
-    # Helpers géométriques
-    # ──────────────────────────────────────────────────────────────────
+    # ── Helpers géométriques ──────────────────────────────────────────
 
     def _cell_rect(self, col: int, row: int) -> QRect:
-        """Retourne le QRect de la case (col, row)."""
         return QRect(1 + col * CELL_SIZE,
                      1 + row * CELL_SIZE,
-                     CELL_SIZE,
-                     CELL_SIZE)
+                     CELL_SIZE, CELL_SIZE)
 
     def _pos_to_cell(self, x: int, y: int):
-        """Convertit des coordonnées pixel en (col, row), ou None si hors grille."""
         col = (x - 1) // CELL_SIZE
         row = (y - 1) // CELL_SIZE
         if 0 <= col < self._cols and 0 <= row < self._rows:
             return (col, row)
         return None
 
-    # ──────────────────────────────────────────────────────────────────
-    # Événements utilisateur
-    # ──────────────────────────────────────────────────────────────────
+    # ── Événements utilisateur ────────────────────────────────────────
 
     def mousePressEvent(self, event):
-        """Sélectionne la case cliquée."""
         if self._grid_data is None:
             return
         pos = self._pos_to_cell(event.x(), event.y())
@@ -251,16 +238,21 @@ class GridWidget(QWidget):
             self.update()
         self.setFocus()
 
+    def mouseMoveEvent(self, event):
+        if self._grid_data is None:
+            return
+        pos = self._pos_to_cell(event.x(), event.y())
+        if pos != self._hovered:
+            self._hovered = pos
+            self.update()
+
+    def leaveEvent(self, event):
+        self._hovered = None
+        self.update()
+
     def keyPressEvent(self, event):
-        """
-        Gère la saisie clavier :
-          - Touches 1–9  : saisir un chiffre
-          - Delete / Backspace : effacer la case
-          - Flèches       : déplacer la sélection
-        """
         if self._selected is None or self._grid_data is None:
             return
-
         col, row = self._selected
         cell = self._cell_map.get((col, row))
         if cell is None:
@@ -268,29 +260,22 @@ class GridWidget(QWidget):
 
         key = event.key()
 
-        # ── Saisie d'un chiffre ──
         if Qt.Key_1 <= key <= Qt.Key_9:
-            if not cell["is_fixed"]:
-                self.cell_value_changed.emit(col, row, key - Qt.Key_0)
-            return
-
-        # ── Effacement ──
-        if key in (Qt.Key_Delete, Qt.Key_Backspace):
+            value   = key - Qt.Key_0
+            max_val = cell.get("max_value", 9)  # fourni par le contrôleur
+            if not cell["is_fixed"] and value <= max_val:
+                self.cell_value_changed.emit(col, row, value)
+        elif key in (Qt.Key_Delete, Qt.Key_Backspace):
             if not cell["is_fixed"]:
                 self.cell_value_changed.emit(col, row, 0)
-            return
-
-        # ── Navigation ──
-        moves = {
-            Qt.Key_Left:  (-1,  0),
-            Qt.Key_Right: ( 1,  0),
-            Qt.Key_Up:    ( 0, -1),
-            Qt.Key_Down:  ( 0,  1),
-        }
-        if key in moves:
-            dc, dr = moves[key]
-            new_col = col + dc
-            new_row = row + dr
-            if 0 <= new_col < self._cols and 0 <= new_row < self._rows:
-                self._selected = (new_col, new_row)
-                self.update()
+        else:
+            moves = {
+                Qt.Key_Left:  (-1,  0), Qt.Key_Right: (1, 0),
+                Qt.Key_Up:    ( 0, -1), Qt.Key_Down:  (0, 1),
+            }
+            if key in moves:
+                dc, dr = moves[key]
+                nc, nr = col + dc, row + dr
+                if 0 <= nc < self._cols and 0 <= nr < self._rows:
+                    self._selected = (nc, nr)
+                    self.update()

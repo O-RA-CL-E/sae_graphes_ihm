@@ -31,16 +31,20 @@ class ControllerStub:
         with open(filepath, "r", encoding="utf-8") as f:
             raw = json.load(f)
 
+        # Taille de chaque motif = valeurs autorisées de 1 à N
+        tailles_motif = {mid: len(cases) for mid, cases in raw.items()}
+
         cells = []
         for motif_id, cases in raw.items():
             for col, row, valeur in cases:
                 cells.append({
-                    "col"      : col,
-                    "row"      : row,
-                    "value"    : valeur,
-                    "motif_id" : motif_id,
-                    "is_fixed" : valeur != 0,
-                    "is_error" : False
+                    "col"       : col,
+                    "row"       : row,
+                    "value"     : valeur,
+                    "motif_id"  : motif_id,
+                    "is_fixed"  : valeur != 0,
+                    "is_error"  : False,
+                    "max_value" : tailles_motif[motif_id]
                 })
 
         cols = max(c["col"] for c in cells) + 1
