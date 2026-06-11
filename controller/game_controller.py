@@ -135,7 +135,7 @@ class GameController:
                 for voisin in self.grille.get_voisins(case.x, case.y):
                     if voisin.valeur == case.valeur:
                         conflits.add((voisin.x, voisin.y))
-        for motif in self.grille.motifs:
+        for motif in self.grille.motifs.values():
             valeurs_vues = {}
             for case in motif.cases:
                 if case.est_vide():
