@@ -84,6 +84,24 @@ QPushButton:hover    { background-color: #2E2E48; color: #D8D4CC; border-color: 
 QPushButton:pressed  { background-color: #1E1E30; }
 QPushButton:disabled { color: #404058; border-color: #303048; }
 """
+
+STYLE_LOGO = """
+    font-size: 19px; font-weight: bold; color: #F0EDE8;
+    letter-spacing: 4px; font-family: 'Segoe UI'; background: transparent;
+"""
+STYLE_SUBTITLE = """
+    font-size: 10px; color: #5A5A7A; font-family: 'Segoe UI';
+    background: transparent; padding-bottom: 16px;
+"""
+STYLE_STAT_LBL = """
+    font-size: 9px; color: #5A5A7A; letter-spacing: 2px;
+    font-family: 'Segoe UI'; background: transparent;
+"""
+STYLE_STAT_VAL = """
+    font-size: 26px; font-weight: bold; color: #F0EDE8;
+    font-family: 'Segoe UI'; background: transparent;
+"""
+
 # ─────────────────────────────────────────────────────────────────────
 
 
@@ -140,18 +158,12 @@ class MainWindow(QMainWindow):
         # Titre
         lbl_logo = QLabel("NÉONAURE")
         lbl_logo.setAlignment(Qt.AlignCenter)
-        lbl_logo.setStyleSheet(
-            "font-size:19px; font-weight:bold; color:#F0EDE8;"
-            "letter-spacing:4px; font-family:'Segoe UI'; background:transparent;"
-        )
+        lbl_logo.setStyleSheet(STYLE_LOGO)
         pv.addWidget(lbl_logo)
 
         lbl_sub = QLabel("variante du Sudoku")
         lbl_sub.setAlignment(Qt.AlignCenter)
-        lbl_sub.setStyleSheet(
-            "font-size:10px; color:#5A5A7A; font-family:'Segoe UI';"
-            "background:transparent; padding-bottom:16px;"
-        )
+        lbl_sub.setStyleSheet(STYLE_SUBTITLE)
         pv.addWidget(lbl_sub)
 
         pv.addWidget(self._separator())
@@ -223,20 +235,14 @@ class MainWindow(QMainWindow):
     def _stat_label(text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setAlignment(Qt.AlignCenter)
-        lbl.setStyleSheet(
-            "font-size:9px; color:#5A5A7A; letter-spacing:2px;"
-            "font-family:'Segoe UI'; background:transparent;"
-        )
+        lbl.setStyleSheet(STYLE_STAT_LBL)
         return lbl
 
     @staticmethod
     def _stat_value(text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setAlignment(Qt.AlignCenter)
-        lbl.setStyleSheet(
-            "font-size:26px; font-weight:bold; color:#F0EDE8;"
-            "font-family:'Segoe UI'; background:transparent;"
-        )
+        lbl.setStyleSheet(STYLE_STAT_VAL)
         return lbl
 
     def _build_menus(self):
