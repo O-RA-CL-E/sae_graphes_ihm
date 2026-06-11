@@ -221,7 +221,7 @@ class GridWidget(QWidget):
                      1 + row * CELL_SIZE,
                      CELL_SIZE, CELL_SIZE)
 
-    def _pos_to_cell(self, x: int, y: int):
+    def _pos_to_cell(self, x: int, y: int) -> tuple[int, int] | None:
         col = (x - 1) // CELL_SIZE
         row = (y - 1) // CELL_SIZE
         if 0 <= col < self._cols and 0 <= row < self._rows:
