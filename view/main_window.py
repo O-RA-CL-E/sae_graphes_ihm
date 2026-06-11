@@ -286,11 +286,6 @@ class MainWindow(QMainWindow):
         self._grid_widget.cell_value_changed.connect(self._on_cell_changed)
         self._grid_widget.cell_selected.connect(self._on_cell_selected)
 
-        def _on_cell_selected(self, col: int, row: int):
-            """Met à jour les stats quand la sélection change."""
-            if self._grille_chargee:
-                self._maj_stats(self._controller._generer_grid_data())
-
     def _init_timer(self):
         self._timer = QTimer(self)
         self._timer.setInterval(1000)
@@ -341,6 +336,11 @@ class MainWindow(QMainWindow):
                                         "Félicitations, vous avez résolu la grille !")
         except Exception as e:
             QMessageBox.warning(self, "Saisie invalide", str(e))
+
+    def _on_cell_selected(self, col: int, row: int):
+        """Met à jour les stats quand la sélection change."""
+        if self._grille_chargee:
+            self._maj_stats(self._controller._generer_grid_data())
 
     def _on_resoudre(self):
         if QMessageBox.question(
