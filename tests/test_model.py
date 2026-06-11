@@ -2,24 +2,7 @@ import json
 from model.case import Case
 from model.motif import Motif
 from model.grille import Grille
-
-
-def charger_grille(chemin: str) -> Grille:
-    """Charge une grille depuis un fichier JSON et retourne un objet Grille."""
-    with open(chemin, "r") as f:
-        data = json.load(f)
-
-    grille = Grille()
-
-    for nom_motif, liste_cases in data.items():
-        cases = []
-        for x, y, valeur in liste_cases:
-            case = Case(x, y, valeur)
-            grille.cases[(x, y)] = case
-            cases.append(case)
-        grille.motifs[nom_motif] = Motif(nom_motif, cases)
-
-    return grille
+from controller.grille_io import charger_grille 
 
 
 if __name__ == "__main__":
