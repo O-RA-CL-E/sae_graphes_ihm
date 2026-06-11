@@ -27,20 +27,19 @@ class Grille:
         """Retourne la case aux coordonnées (x, y), ou None si inexistante."""
         return self.cases.get((x, y))
 
-    def get_voisins(self, x: int, y: int) -> list:
-        """
-        Retourne les cases voisines de (x, y) dans les 8 directions.
-        Les cases hors grille sont ignorées.
-        """
-        voisins = []
-        for dx in [-1, 0, 1]:
-            for dy in [-1, 0, 1]:
-                if dx == 0 and dy == 0:
-                    continue
-                voisin = self.cases.get((x + dx, y + dy))
-                if voisin:
-                    voisins.append(voisin)
-        return voisins
+    def get_voisins(self, x: int, y: int) -> list[Case]:
+        """Retourne les cases voisines de (x, y) dans les 8 directions."""
+        directions = [
+            (-1, -1), (-1, 0), (-1, 1),
+            ( 0, -1),          ( 0, 1),
+            ( 1, -1), ( 1, 0), ( 1, 1)
+        ]
+        
+        return [
+            self.cases[(x + dx, y + dy)]
+            for dx, dy in directions
+            if (x + dx, y + dy) in self.cases
+        ]
 
     def get_motif_case(self, x: int, y: int) -> Motif | None:
         """Retourne le motif auquel appartient la case (x, y), ou None."""
