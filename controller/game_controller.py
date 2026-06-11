@@ -15,6 +15,7 @@ from pathlib import Path
 
 from model.grille import Grille
 from controller.grille_io import charger_grille, sauvegarder_grille
+from solver.solveur import resoudre as solveur_resoudre
 
 
 class GameController:
@@ -53,12 +54,9 @@ class GameController:
         return self._generer_grid_data()
 
     def resoudre(self) -> dict:
-        """Lance le solveur de Novaak et retourne le grid_data résolu."""
+        """Lance le solveur et retourne le grid_data résolu."""
         self._verifier_partie()
-
-        # Import de la fonction (et non d'une classe manquante) pour éviter le bug d'intégration
-        from solver.solveur import resoudre as solveur_resoudre
-
+    
         succes = solveur_resoudre(self.grille)
         if not succes:
             raise RuntimeError("Cette grille n'a pas de solution.")
