@@ -18,6 +18,7 @@ class Grille:
         self.hauteur = hauteur
         self.cases: dict = {}
         self.motifs: dict = {}
+        self._case_to_motif: dict = {}
 
     # ------------------------------------------------------------------ #
     #  Accès                                                               #
@@ -43,11 +44,8 @@ class Grille:
         return voisins
 
     def get_motif_case(self, x: int, y: int) -> Motif | None:
-        """Retourne le motif auquel appartient la case (x, y), ou None."""
-        for motif in self.motifs.values():
-            if any(c.x == x and c.y == y for c in motif.cases):
-                return motif
-        return None
+        """Retourne le motif auquel appartient la case (x, y), ou None. O(1)."""
+        return self._case_to_motif.get((x, y))
 
     # ------------------------------------------------------------------ #
     #  Validation                                                          #
