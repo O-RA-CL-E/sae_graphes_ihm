@@ -102,7 +102,7 @@ class GridWidget(QWidget):
 
     # ── Rendu ─────────────────────────────────────────────────────────
 
-    def paintEvent(self, event):
+    def paintEvent(self, _event):
         painter = QPainter(self)
 
         if self._grid_data is None:
@@ -248,7 +248,7 @@ class GridWidget(QWidget):
             self._hovered = pos
             self.update()
 
-    def leaveEvent(self, event):
+    def leaveEvent(self, _event):
         self._hovered = None
         self.update()
 
