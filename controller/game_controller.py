@@ -126,6 +126,7 @@ class GameController:
     def get_conflits(self) -> set:
         self._verifier_partie()
         conflits = set()
+
         for case in self.grille.cases.values():
             if case.est_vide():
                 continue
@@ -134,6 +135,16 @@ class GameController:
                 for voisin in self.grille.get_voisins(case.x, case.y):
                     if voisin.valeur == case.valeur:
                         conflits.add((voisin.x, voisin.y))
+        for motif in self.grille.motifs:
+            valeurs_vues = {}
+            for case in motif.cases:
+                if case.est_vide():
+                    continue
+                if case.valeur in valeurs_vues:
+                    conflits.add((case.x, case.y))
+                    conflits.add(valeurs_vues[case.valeur])
+                else:
+                    valeurs_vues[case.valeur] = (case.x, case.y)
         return conflits
 
     def _generer_grid_data(self) -> dict:
