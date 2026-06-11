@@ -16,8 +16,9 @@ class Grille:
     def __init__(self, largeur: int = 8, hauteur: int = 8) -> None:
         self.largeur = largeur
         self.hauteur = hauteur
-        self.cases: dict = {}
-        self.motifs: dict = {}
+        self.cases: dict[tuple[int, int], Case] = {}
+        self.motifs: dict[str, Motif] = {}
+        self._case_to_motif: dict[tuple[int, int], Motif] = {}
 
     # ------------------------------------------------------------------ #
     #  Accès                                                               #
