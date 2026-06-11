@@ -72,6 +72,9 @@ def charger_grille(chemin: str | Path) -> Grille:
 
         grille.motifs[nom_motif] = Motif(nom_motif, cases_motif)
 
+        for case in cases_motif:
+            grille._case_to_motif[(case.x, case.y)] = grille.motifs[nom_motif]
+
     # Déduit les dimensions réelles depuis les coordonnées chargées
     if grille.cases:
         grille.largeur  = max(x for x, y in grille.cases) + 1
