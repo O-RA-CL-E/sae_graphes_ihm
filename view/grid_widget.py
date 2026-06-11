@@ -55,6 +55,7 @@ class GridWidget(QWidget):
     """
 
     cell_value_changed = pyqtSignal(int, int, int)
+    cell_selected = pyqtSignal(int, int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -235,6 +236,7 @@ class GridWidget(QWidget):
         pos = self._pos_to_cell(event.x(), event.y())
         if pos:
             self._selected = pos
+            self.cell_selected.emit(pos[0], pos[1])
             self.update()
         self.setFocus()
 
@@ -278,4 +280,5 @@ class GridWidget(QWidget):
                 nc, nr = col + dc, row + dr
                 if 0 <= nc < self._cols and 0 <= nr < self._rows:
                     self._selected = (nc, nr)
+                    self.cell_selected.emit(nc, nr)
                     self.update()

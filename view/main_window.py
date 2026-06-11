@@ -284,6 +284,12 @@ class MainWindow(QMainWindow):
 
         # Grille → contrôleur
         self._grid_widget.cell_value_changed.connect(self._on_cell_changed)
+        self._grid_widget.cell_selected.connect(self._on_cell_selected)
+
+        def _on_cell_selected(self, col: int, row: int):
+            """Met à jour les stats quand la sélection change."""
+            if self._grille_chargee:
+                self._maj_stats(self._controller._generer_grid_data())
 
     def _init_timer(self):
         self._timer = QTimer(self)
@@ -348,6 +354,9 @@ class MainWindow(QMainWindow):
             self._afficher(grid_data)
             self._timer.stop()
             self._status("Solution affichée.")
+            if self._est_complete(grid_data):
+                QMessageBox.information(self, "Résolu !",
+                                        "La solution a été résolue automatiquement !")
         except Exception as e:
             QMessageBox.critical(self, "Résolution impossible", str(e))
 
@@ -393,6 +402,7 @@ class MainWindow(QMainWindow):
         self._grid_widget.update_grid(grid_data)
         self._grid_widget.adjustSize()
         self._maj_stats(grid_data)
+        self._grid_widget.setMinimumSize(self._grid_widget.sizeHint())
 
     def _maj_stats(self, grid_data: dict):
         cells   = grid_data.get("cells", [])
