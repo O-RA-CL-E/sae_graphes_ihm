@@ -57,3 +57,40 @@ python main.py
 ---
 
 ## Structure du projet
+
+    sae_graphes_ihm/
+    ├── model/
+    │   ├── case.py             # Classe Case
+    │   ├── motif.py            # Classe Motif
+    │   └── grille.py           # Classe Grille
+    ├── view/
+    │   ├── main_window.py      # Fenêtre principale
+    │   └── grid_widget.py      # Composant graphique de la grille
+    ├── controller/
+    │   ├── game_controller.py  # Moteur de jeu
+    │   └── grille_io.py        # Chargement / sauvegarde JSON
+    ├── solver/
+    │   └── solveur.py          # Algorithme de résolution (backtracking MRV)
+    ├── grilles/                # Grilles de jeu fournies (.json + .png)
+    ├── tests/                  # Tests unitaires
+    ├── docs/                   # Notice d'utilisation
+    ├── comptes_rendus/         # Comptes-rendus de séances
+    ├── requirements.txt
+    └── README.md
+
+---
+
+## Groupe
+
+| Membre | Rôle |
+|---|---|
+| Novaak | Model + Solveur |
+| Maël | View PyQt |
+| Yanis | Controller + I/O |
+
+---
+
+## Modules évalués
+
+R2-07 Graphes · R2-02 IHM  
+Responsable : L. Conoir · Intervenants : R. Cozot, J. Hermilier
