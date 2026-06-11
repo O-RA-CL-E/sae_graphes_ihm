@@ -156,27 +156,36 @@ class GridWidget(QWidget):
         painter.setRenderHint(QPainter.TextAntialiasing, True)
         font_bold   = QFont("Segoe UI", CELL_SIZE // 3, QFont.Bold)
         font_normal = QFont("Segoe UI", CELL_SIZE // 3, QFont.Normal)
+        font_tiny   = QFont("Segoe UI", CELL_SIZE // 6, QFont.Normal) # Pour l'indice de taille
 
         for (col, row), cell in self._cell_map.items():
-            if cell["value"] == 0:
-                continue
             rect = self._cell_rect(col, row)
             pos  = (col, row)
 
-            if pos == self._selected:
-                painter.setPen(C_TXT_SELECT)
-                painter.setFont(font_bold if cell["is_fixed"] else font_normal)
-            elif cell["is_error"]:
-                painter.setPen(C_TXT_ERREUR)
-                painter.setFont(font_normal)
-            elif cell["is_fixed"]:
-                painter.setPen(C_TXT_FIXE)
-                painter.setFont(font_bold)
-            else:
-                painter.setPen(C_TXT_JOUEUR)
-                painter.setFont(font_normal)
+            if cell["value"] != 0:
+                if pos == self._selected:
+                    painter.setPen(C_TXT_SELECT)
+                    painter.setFont(font_bold if cell["is_fixed"] else font_normal)
+                elif cell["is_error"]:
+                    painter.setPen(C_TXT_ERREUR)
+                    painter.setFont(font_normal)
+                elif cell["is_fixed"]:
+                    painter.setPen(C_TXT_FIXE)
+                    painter.setFont(font_bold)
+                else:
+                    painter.setPen(C_TXT_JOUEUR)
+                    painter.setFont(font_normal)
 
-            painter.drawText(rect, Qt.AlignCenter, str(cell["value"]))
+                painter.drawText(rect, Qt.AlignCenter, str(cell["value"]))
+            
+            # UX : Si la case est vide et sélectionnée (ou survolée), afficher subtilement sa taille max (1..N)
+            elif pos == self._selected and not cell["is_fixed"]:
+                max_val = cell.get("max_value", 9)
+                painter.setPen(QColor(200, 220, 255, 180) if pos == self._selected else QColor(150, 150, 150, 120))
+                painter.setFont(font_tiny)
+                # Aligner en haut à droite avec une petite marge
+                margin_rect = rect.adjusted(0, 2, -4, 0)
+                painter.drawText(margin_rect, Qt.AlignTop | Qt.AlignRight, f"max {max_val}")
 
     def _draw_borders(self, painter: QPainter):
         painter.setRenderHint(QPainter.Antialiasing, False)
