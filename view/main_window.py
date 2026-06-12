@@ -182,6 +182,9 @@ class MainWindow(QMainWindow):
         self._btn_resoudre = QPushButton("Résoudre")
         self._btn_resoudre.setStyleSheet(BTN_PRIMARY)
         self._btn_resoudre.setEnabled(False)
+        self._btn_reinit   = QPushButton("Réinitialiser")
+        self._btn_charger  = QPushButton("Charger une grille…")
+        self._btn_sauvegarder = QPushButton("Sauvegarder…")
         pv.addWidget(self._btn_resoudre)
 
         pv.addSpacing(8)
