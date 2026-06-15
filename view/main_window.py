@@ -5,6 +5,7 @@ Améliorations :
   - Panneau latéral sombre : timer, compteurs cases vides / erreurs, boutons
   - Menubar et status bar avec thème sombre assorti
   - Chronomètre de jeu intégré (100% côté View, pas de logique métier)
+  - Prise en charge de la désélection globale en cliquant en dehors de la grille
 """
 
 from PyQt5.QtWidgets import (
@@ -342,6 +343,9 @@ class MainWindow(QMainWindow):
 
     def _on_cell_selected(self, col: int, row: int):
         """Met à jour les stats quand la sélection change."""
+        # Amélioration : On ignore le rafraîchissement ciblé si l'indice est une sentinelle de désélection
+        if col == -1 and row == -1:
+            return
         if self._grille_chargee:
             self._maj_stats(self._controller._generer_grid_data())
 
@@ -447,3 +451,12 @@ class MainWindow(QMainWindow):
         return bool(cells) and all(
             c["value"] != 0 and not c["is_error"] for c in cells
         )
+
+    def mousePressEvent(self, event):
+        """Amélioration : Si l'utilisateur clique en dehors de la grille (panneau latéral ou fond de l'app),
+        on réinitialise la sélection visuelle pour conserver une grille intacte."""
+        if self._grille_chargee and self._grid_widget:
+            self._grid_widget._selected = None
+            self._grid_widget.update()
+            self._maj_stats(self._controller._generer_grid_data())
+        super().mousePressEvent(event)

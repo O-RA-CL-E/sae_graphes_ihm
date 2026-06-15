@@ -4,9 +4,10 @@ grid_widget.py — Composant graphique de la grille Néonaure (version pro).
 Améliorations visuelles :
   - Survol des cases (hover)
   - Mise en évidence du motif de la case sélectionnée
-  - Sélection avec fond arrondi
+  - Sélection avec fond arrondi translucide imbriqué
   - Palette chaleureuse et moderne
-  - Texte avec anti-aliasing
+  - Texte avec anti-aliasing et aide à la saisie élégante (≤N)
+  - Désélection complète lors d'un clic dans le vide
 """
 
 from PyQt5.QtWidgets import QWidget, QSizePolicy
@@ -18,19 +19,19 @@ from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QPainterPath
 CELL_SIZE     = 60
 BORDER_THIN   = 1
 BORDER_THICK  = 3
-CORNER_RADIUS = 5
+CORNER_RADIUS = 6
 
 # ── Palette ───────────────────────────────────────────────────────────
 C_BG_VIDE    = QColor(252, 251, 248)   # blanc cassé
 C_BG_FIXE    = QColor(224, 220, 213)   # beige gris — case fixe
-C_BG_SELECT  = QColor(74,  127, 191)   # bleu acier — sélection
+C_BG_SELECT  = QColor(74, 127, 191, 50) # Bleu acier translucide pour superposition
 C_BG_HOVER   = QColor(232, 242, 255)   # bleu très pâle — survol
 C_BG_MOTIF   = QColor(236, 245, 255)   # bleu pâle — même motif que sélection
 C_BG_ERREUR  = QColor(253, 234, 232)   # rose pâle — erreur
 
 C_TXT_FIXE   = QColor(38,  38,  38)    # quasi-noir — chiffre fixe
 C_TXT_JOUEUR = QColor(26,  80,  140)   # bleu foncé — saisie joueur
-C_TXT_SELECT = QColor(255, 255, 255)   # blanc — texte sur sélection
+C_TXT_SELECT = QColor(26,  80,  140)   # bleu foncé — conservé sur sélection
 C_TXT_ERREUR = QColor(183,  28,  28)   # rouge foncé — erreur
 
 C_BRD_FINE   = QColor(200, 194, 186)   # gris chaud — intra-motif
@@ -49,7 +50,7 @@ class GridWidget(QWidget):
     {
         "cols": int, "rows": int,
         "cells": [
-            {"col", "row", "value", "motif_id", "is_fixed", "is_error"}
+            {"col", "row", "value", "motif_id", "is_fixed", "is_error", "max_value"}
         ]
     }
     """
@@ -131,15 +132,8 @@ class GridWidget(QWidget):
             rect = self._cell_rect(col, row)
             pos  = (col, row)
 
-            if pos == self._selected:
-                # Fond neutre, puis overlay arrondi bleu
-                base = C_BG_FIXE if cell["is_fixed"] else C_BG_VIDE
-                painter.fillRect(rect, base)
-                path = QPainterPath()
-                path.addRoundedRect(QRectF(rect).adjusted(3, 3, -3, -3),
-                                    CORNER_RADIUS, CORNER_RADIUS)
-                painter.fillPath(path, C_BG_SELECT)
-            elif cell["is_error"]:
+            # 1. Fond de base sous la cellule
+            if cell["is_error"]:
                 painter.fillRect(rect, C_BG_ERREUR)
             elif pos == self._hovered and not cell["is_fixed"]:
                 painter.fillRect(rect, C_BG_HOVER)
@@ -150,13 +144,20 @@ class GridWidget(QWidget):
             else:
                 painter.fillRect(rect, C_BG_VIDE)
 
+            # 2. Amélioration : Masque arrondi translucide empilé par-dessus le fond
+            if pos == self._selected:
+                path = QPainterPath()
+                path.addRoundedRect(QRectF(rect).adjusted(2, 2, -2, -2),
+                                    CORNER_RADIUS, CORNER_RADIUS)
+                painter.fillPath(path, C_BG_SELECT)
+
         painter.setRenderHint(QPainter.Antialiasing, False)
 
     def _draw_numbers(self, painter: QPainter):
         painter.setRenderHint(QPainter.TextAntialiasing, True)
         font_bold   = QFont("Segoe UI", CELL_SIZE // 3, QFont.Bold)
         font_normal = QFont("Segoe UI", CELL_SIZE // 3, QFont.Normal)
-        font_tiny   = QFont("Segoe UI", CELL_SIZE // 6, QFont.Normal) # Pour l'indice de taille
+        font_tiny   = QFont("Segoe UI", CELL_SIZE // 6, QFont.Bold)
 
         for (col, row), cell in self._cell_map.items():
             rect = self._cell_rect(col, row)
@@ -164,7 +165,7 @@ class GridWidget(QWidget):
 
             if cell["value"] != 0:
                 if pos == self._selected:
-                    painter.setPen(C_TXT_SELECT)
+                    painter.setPen(C_TXT_FIXE if cell["is_fixed"] else C_TXT_SELECT)
                     painter.setFont(font_bold if cell["is_fixed"] else font_normal)
                 elif cell["is_error"]:
                     painter.setPen(C_TXT_ERREUR)
@@ -178,14 +179,14 @@ class GridWidget(QWidget):
 
                 painter.drawText(rect, Qt.AlignCenter, str(cell["value"]))
             
-            # UX : Si la case est vide et sélectionnée (ou survolée), afficher subtilement sa taille max (1..N)
+            # Amélioration : Rendu discret et élégant de la valeur maximale autorisée (≤N)
             elif pos == self._selected and not cell["is_fixed"]:
                 max_val = cell.get("max_value", 9)
-                painter.setPen(QColor(200, 220, 255, 180) if pos == self._selected else QColor(150, 150, 150, 120))
+                painter.setPen(QColor(74, 127, 191, 200))
                 painter.setFont(font_tiny)
-                # Aligner en haut à droite avec une petite marge
-                margin_rect = rect.adjusted(0, 2, -4, 0)
-                painter.drawText(margin_rect, Qt.AlignTop | Qt.AlignRight, f"max {max_val}")
+                
+                margin_rect = rect.adjusted(0, 3, -5, 0)
+                painter.drawText(margin_rect, Qt.AlignTop | Qt.AlignRight, f"≤{max_val}")
 
     def _draw_borders(self, painter: QPainter):
         painter.setRenderHint(QPainter.Antialiasing, False)
@@ -246,7 +247,11 @@ class GridWidget(QWidget):
         if pos:
             self._selected = pos
             self.cell_selected.emit(pos[0], pos[1])
-            self.update()
+        else:
+            # Amélioration : Clic dans le vide du widget -> Désélection locale
+            self._selected = None
+            self.cell_selected.emit(-1, -1)
+        self.update()
         self.setFocus()
 
     def mouseMoveEvent(self, event):
@@ -273,7 +278,7 @@ class GridWidget(QWidget):
 
         if Qt.Key_1 <= key <= Qt.Key_9:
             value   = key - Qt.Key_0
-            max_val = cell.get("max_value", 9)  # fourni par le contrôleur
+            max_val = cell.get("max_value", 9)
             if not cell["is_fixed"] and value <= max_val:
                 self.cell_value_changed.emit(col, row, value)
         elif key in (Qt.Key_Delete, Qt.Key_Backspace):
