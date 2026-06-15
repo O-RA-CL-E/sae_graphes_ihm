@@ -8,6 +8,7 @@ Améliorations visuelles :
   - Palette chaleureuse et moderne
   - Texte avec anti-aliasing et aide à la saisie élégante (≤N)
   - Désélection complète lors d'un clic dans le vide
+  - Gestion du verrouillage après résolution automatique
 """
 
 from PyQt5.QtWidgets import QWidget, QSizePolicy
@@ -66,6 +67,7 @@ class GridWidget(QWidget):
         self._hovered   = None
         self._cols      = 0
         self._rows      = 0
+        self._locked    = False  # Empêche la modification clavier après résolution
 
         self.setFocusPolicy(Qt.StrongFocus)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -84,6 +86,7 @@ class GridWidget(QWidget):
             for c in grid_data.get("cells", [])
         }
         self._selected = prev if (prev and prev in self._cell_map) else None
+        self._locked = False  # Libère le verrou au chargement ou à la réinitialisation
         self.updateGeometry()
         self.update()
 
@@ -93,6 +96,12 @@ class GridWidget(QWidget):
         self._selected  = None
         self._hovered   = None
         self._cols = self._rows = 0
+        self._locked    = False
+        self.update()
+
+    def set_locked(self, locked: bool):
+        """Active ou désactive les saisies utilisateur sur le composant."""
+        self._locked = locked
         self.update()
 
     def sizeHint(self) -> QSize:
@@ -135,7 +144,7 @@ class GridWidget(QWidget):
             # 1. Fond de base sous la cellule
             if cell["is_error"]:
                 painter.fillRect(rect, C_BG_ERREUR)
-            elif pos == self._hovered and not cell["is_fixed"]:
+            elif pos == self._hovered and not cell["is_fixed"] and not self._locked:
                 painter.fillRect(rect, C_BG_HOVER)
             elif selected_motif and cell["motif_id"] == selected_motif:
                 painter.fillRect(rect, C_BG_MOTIF)
@@ -144,7 +153,7 @@ class GridWidget(QWidget):
             else:
                 painter.fillRect(rect, C_BG_VIDE)
 
-            # 2. Amélioration : Masque arrondi translucide empilé par-dessus le fond
+            # 2. Superposition : Voile bleu arrondi translucide sur la sélection
             if pos == self._selected:
                 path = QPainterPath()
                 path.addRoundedRect(QRectF(rect).adjusted(2, 2, -2, -2),
@@ -179,8 +188,8 @@ class GridWidget(QWidget):
 
                 painter.drawText(rect, Qt.AlignCenter, str(cell["value"]))
             
-            # Amélioration : Rendu discret et élégant de la valeur maximale autorisée (≤N)
-            elif pos == self._selected and not cell["is_fixed"]:
+            # Aide visuelle discrète en haut à droite (uniquement si non verrouillé)
+            elif pos == self._selected and not cell["is_fixed"] and not self._locked:
                 max_val = cell.get("max_value", 9)
                 painter.setPen(QColor(74, 127, 191, 200))
                 painter.setFont(font_tiny)
@@ -248,14 +257,14 @@ class GridWidget(QWidget):
             self._selected = pos
             self.cell_selected.emit(pos[0], pos[1])
         else:
-            # Amélioration : Clic dans le vide du widget -> Désélection locale
+            # Clic dans les marges du widget -> Désélection
             self._selected = None
             self.cell_selected.emit(-1, -1)
         self.update()
         self.setFocus()
 
     def mouseMoveEvent(self, event):
-        if self._grid_data is None:
+        if self._grid_data is None or self._locked:
             return
         pos = self._pos_to_cell(event.x(), event.y())
         if pos != self._hovered:
@@ -267,7 +276,8 @@ class GridWidget(QWidget):
         self.update()
 
     def keyPressEvent(self, event):
-        if self._selected is None or self._grid_data is None:
+        # Bloque l'événement clavier si la vue est verrouillée
+        if self._selected is None or self._grid_data is None or self._locked:
             return
         col, row = self._selected
         cell = self._cell_map.get((col, row))

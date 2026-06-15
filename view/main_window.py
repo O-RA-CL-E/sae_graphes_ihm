@@ -6,6 +6,7 @@ Améliorations :
   - Menubar et status bar avec thème sombre assorti
   - Chronomètre de jeu intégré (100% côté View, pas de logique métier)
   - Prise en charge de la désélection globale en cliquant en dehors de la grille
+  - Verrouillage total de la grille après calcul de la solution automatique
 """
 
 from PyQt5.QtWidgets import (
@@ -183,9 +184,6 @@ class MainWindow(QMainWindow):
         self._btn_resoudre = QPushButton("Résoudre")
         self._btn_resoudre.setStyleSheet(BTN_PRIMARY)
         self._btn_resoudre.setEnabled(False)
-        self._btn_reinit   = QPushButton("Réinitialiser")
-        self._btn_charger  = QPushButton("Charger une grille…")
-        self._btn_sauvegarder = QPushButton("Sauvegarder…")
         pv.addWidget(self._btn_resoudre)
 
         pv.addSpacing(8)
@@ -343,7 +341,6 @@ class MainWindow(QMainWindow):
 
     def _on_cell_selected(self, col: int, row: int):
         """Met à jour les stats quand la sélection change."""
-        # Amélioration : On ignore le rafraîchissement ciblé si l'indice est une sentinelle de désélection
         if col == -1 and row == -1:
             return
         if self._grille_chargee:
@@ -361,6 +358,12 @@ class MainWindow(QMainWindow):
             self._afficher(grid_data)
             self._timer.stop()
             self._status("Solution affichée.")
+            
+            # Verrouille graphiquement la grille pour empêcher toute altération
+            self._grid_widget.set_locked(True)
+            self._btn_resoudre.setEnabled(False)
+            self._act_resoudre.setEnabled(False)
+
             if self._est_complete(grid_data):
                 QMessageBox.information(self, "Résolu !",
                                         "La solution a été résolue automatiquement !")
@@ -378,6 +381,11 @@ class MainWindow(QMainWindow):
             grid_data = self._controller.reinitialiser()
             self._afficher(grid_data)
             self._reset_timer()
+            
+            # Rétablit la capacité à appeler le solveur
+            self._btn_resoudre.setEnabled(True)
+            self._act_resoudre.setEnabled(True)
+
             self._status("Grille réinitialisée.")
         except Exception as e:
             QMessageBox.critical(self, "Erreur", str(e))
