@@ -84,7 +84,7 @@ python main.py
 
 | Membre | Rôle |
 |---|---|
-| Novaak | Model + Solveur |
+| Ethan | Model + Solveur |
 | Maël | View PyQt |
 | Yanis | Controller + I/O |
 
